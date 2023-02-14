@@ -67,6 +67,7 @@ struct _interpreter {
     PyObject *s_python_function_scatter;
     PyObject *s_python_function_boxplot;
     PyObject *s_python_function_subplot;
+    PyObject *s_python_function_subplots;
     PyObject *s_python_function_subplot2grid;
     PyObject *s_python_function_legend;
     PyObject *s_python_function_xlim;
@@ -243,6 +244,7 @@ private:
         s_python_function_scatter = safe_import(pymod,"scatter");
         s_python_function_boxplot = safe_import(pymod,"boxplot");
         s_python_function_subplot = safe_import(pymod, "subplot");
+        s_python_function_subplots = safe_import(pymod, "subplots");
         s_python_function_subplot2grid = safe_import(pymod, "subplot2grid");
         s_python_function_legend = safe_import(pymod, "legend");
         s_python_function_xlim = safe_import(pymod, "xlim");
@@ -2263,6 +2265,40 @@ inline void subplot(long nrows, long ncols, long plot_number)
     if(!res) throw std::runtime_error("Call to subplot() failed.");
 
     Py_DECREF(args);
+    Py_DECREF(res);
+}
+
+/**
+ * @brief This utility wrapper makes it convenient to create common layouts of subplots, including the enclosing figure object, in a single call.
+ * 
+ * @param nrows Number of rows of the subplot grid.
+ * @param ncols Number of columns of the subplot grid.
+ * @param keywords sharex {'none', 'all', 'row', 'col'}, sharey {'none', 'all', 'row', 'col'}
+ */
+inline void subplots(long nrows, long ncols, const std::map<std::string, std::string> &keywords = {})
+{
+    detail::_interpreter::get();
+
+    // construct positional args
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, PyLong_FromLong(nrows));
+    PyTuple_SetItem(args, 1, PyLong_FromLong(ncols));
+
+    // construct keyword arguments
+    PyObject* kwargs = PyDict_New();
+    for (auto it = keywords.begin(); it != keywords.end(); ++it) {
+        PyDict_SetItemString(kwargs, it->first.c_str(), PyUnicode_FromString(it->second.c_str()));
+    }
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_subplots, args, kwargs);
+    if(!res){
+        PyErr_Print(); // TODO: print this error on every exception!
+        throw std::runtime_error("Call to subplots() failed.");
+    }
+
+    // free memory
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
     Py_DECREF(res);
 }
 
